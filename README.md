@@ -20,6 +20,7 @@ Stages 2–4 add async messaging, caching, and observability.
 | Caching        | Redis (Stage 4)                     |
 | Build          | Maven (multi-module)                |
 | Infrastructure | Docker Compose                      |
+| Testing        | JUnit 5, Mockito, AssertJ            |
 
 ---
 
@@ -106,43 +107,44 @@ GET http://localhost:8080/actuator/health
 
 ## API Endpoints
 
-> All endpoints return `ApiResponse<T>` wrapper with `success`, `data`, and `message` fields.
+> Endpoints return the resource DTO directly (`ResponseEntity<T>`), or `PageResponse<T>` for paginated lists. Errors are returned as `ErrorResponse` via `GlobalExceptionHandler`.
 
 ### Users — `/api/v1/users`
 
-| Method | Path              | Description         | Status  |
-|--------|-------------------|---------------------|---------|
-| GET    | `/{id}`           | Get user by ID      | TODO    |
-| PUT    | `/{id}`           | Update user profile | TODO    |
+| Method | Path              | Description         | Status |
+|--------|-------------------|----------------------|--------|
+| POST   | `/`               | Register a new user | Done   |
+| GET    | `/{id}`           | Get user by ID      | Done   |
+| PUT    | `/{id}`           | Update user profile | Done   |
 
 ### Properties — `/api/v1/properties`
 
-| Method | Path              | Description           | Status  |
-|--------|-------------------|-----------------------|---------|
-| GET    | `/`               | List all (paginated)  | TODO    |
-| GET    | `/{id}`           | Get property by ID    | TODO    |
-| POST   | `/`               | Create property       | TODO    |
-| PUT    | `/{id}`           | Update property       | TODO    |
-| DELETE | `/{id}`           | Delete property       | TODO    |
+| Method | Path              | Description           | Status |
+|--------|-------------------|------------------------|--------|
+| GET    | `/`               | List all (paginated)  | Done   |
+| GET    | `/{id}`           | Get property by ID    | Done   |
+| POST   | `/`               | Create property        | Done   |
+| PUT    | `/{id}`           | Update property        | Done   |
+| DELETE | `/{id}`           | Delete property        | Done   |
 
 ### Rooms — `/api/v1/properties/{propertyId}/rooms`
 
-| Method | Path                          | Description               | Status  |
-|--------|-------------------------------|---------------------------|---------|
-| GET    | `/`                           | List rooms for property   | TODO    |
-| GET    | `/available?checkIn=&checkOut=` | Find available rooms    | TODO    |
-| POST   | `/`                           | Add room to property      | TODO    |
-| PATCH  | `/{roomId}/status`            | Update room status        | TODO    |
+| Method | Path                             | Description              | Status |
+|--------|----------------------------------|---------------------------|--------|
+| GET    | `/`                              | List rooms for property  | Done   |
+| GET    | `/available?checkIn=&checkOut=`  | Find available rooms      | Done   |
+| POST   | `/`                              | Add room to property      | Done   |
+| PATCH  | `/{roomId}/status`               | Update room status        | Done   |
 
 ### Bookings — `/api/v1/bookings`
 
-| Method | Path                  | Description                | Status  |
-|--------|-----------------------|----------------------------|---------|
-| POST   | `/`                   | Create booking             | TODO    |
-| GET    | `/{id}`               | Get booking by ID          | TODO    |
-| GET    | `/guest/{guestId}`    | List bookings for guest    | TODO    |
-| PUT    | `/{id}/confirm`       | Confirm a pending booking  | TODO    |
-| PUT    | `/{id}/cancel`        | Cancel a booking           | TODO    |
+| Method | Path                  | Description                | Status |
+|--------|-----------------------|------------------------------|--------|
+| POST   | `/`                   | Create booking              | Done   |
+| GET    | `/{id}`               | Get booking by ID            | Done   |
+| GET    | `/guest/{guestId}`    | List bookings for guest      | Done   |
+| PUT    | `/{id}/confirm`       | Confirm a pending booking    | Done   |
+| PUT    | `/{id}/cancel`        | Cancel a booking             | Done   |
 
 ---
 
@@ -150,7 +152,7 @@ GET http://localhost:8080/actuator/health
 
 | Stage | Focus                        | Key additions                                                                  |
 |-------|------------------------------|--------------------------------------------------------------------------------|
-| **1** | Core domain *(current)*      | Multi-module Maven, PostgreSQL, Liquibase, CRUD, pessimistic-lock booking      |
+| **1** | Core domain *(complete)*     | Multi-module Maven, PostgreSQL, Liquibase, CRUD, pessimistic-lock booking      |
 | **2** | Async & security             | JWT authentication, Kafka events, email notifications via stayhub-notification |
 | **3** | Advanced queries & reporting | Specification/criteria queries, booking analytics, availability calendar       |
 | **4** | Performance & observability  | Redis caching (room availability), Micrometer metrics, distributed tracing     |
