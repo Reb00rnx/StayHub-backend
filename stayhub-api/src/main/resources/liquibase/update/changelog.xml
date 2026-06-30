@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- ALTER TABLE / column migrations go here, e.g.:
+    <changeSet id="add_phone_to_users" author="stayhub-dev">
+        <comment>...</comment>
+        <sqlFile path="add_phone_to_users.sql" relativeToChangelogFile="true"/>
+    </changeSet>
+    -->
+
+</databaseChangeLog>

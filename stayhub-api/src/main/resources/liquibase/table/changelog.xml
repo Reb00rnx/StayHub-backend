@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="user_schema" author="stayhub-dev">
+        <comment>Core users table — stores all actors (GUEST, HOST, ADMIN)</comment>
+        <sqlFile path="user_schema.sql" relativeToChangelogFile="true"/>
+    </changeSet>
+
+    <changeSet id="property_schema" author="stayhub-dev">
+        <comment>Properties owned by HOST users</comment>
+        <sqlFile path="property_schema.sql" relativeToChangelogFile="true"/>
+    </changeSet>
+
+    <changeSet id="room_schema" author="stayhub-dev">
+        <comment>Rooms belonging to a property</comment>
+        <sqlFile path="room_schema.sql" relativeToChangelogFile="true"/>
+    </changeSet>
+
+    <changeSet id="booking_schema" author="stayhub-dev">
+        <comment>Bookings — core reservation records</comment>
+        <sqlFile path="booking_schema.sql" relativeToChangelogFile="true"/>
+    </changeSet>
+
+    <changeSet id="booking_status_history_schema" author="stayhub-dev">
+        <comment>Audit trail for every booking status transition</comment>
+        <sqlFile path="booking_status_history_schema.sql" relativeToChangelogFile="true"/>
+    </changeSet>
+
+</databaseChangeLog>

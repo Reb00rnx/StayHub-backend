@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: stayhub-postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-stayhub}
+      POSTGRES_USER: ${DB_USERNAME:-stayhub}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-stayhub_password}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-stayhub} -d ${DB_NAME:-stayhub}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - stayhub-network
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: stayhub-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@stayhub.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin_password}
+    ports:
+      - "5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - stayhub-network
+
+volumes:
+  postgres_data:
+    name: stayhub_postgres_data
+  pgadmin_data:
+    name: stayhub_pgadmin_data
+
+networks:
+  stayhub-network:
+    name: stayhub-network
+    driver: bridge
