@@ -103,6 +103,14 @@ Application available at `http://localhost:8080`.
 GET http://localhost:8080/actuator/health
 ```
 
+### API documentation (Swagger UI)
+
+```
+http://localhost:8080/swagger-ui.html
+```
+
+Interactive view of every endpoint across all modules — request/response schemas, try-it-out execution.
+
 ---
 
 ## API Endpoints
