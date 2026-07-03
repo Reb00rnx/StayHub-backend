@@ -45,13 +45,10 @@ public class UserService {
 
         User user = new User();
         user.setEmail(request.email());
-        user.setPasswordHash(request.password());
+        user.setPasswordHash(passwordEncoder.encode(request.password()));
         user.setFirstName(request.firstName());
         user.setLastName(request.lastName());
-        user.setRole(UserRole.GUEST);
-
-        String encodedPassword = passwordEncoder.encode(user.getPasswordHash());
-        user.setPasswordHash(encodedPassword);
+        user.setRole(request.role() != null ? request.role() : UserRole.GUEST);
 
         User savedUser = userRepository.save(user);
         log.info("User created successfully with id: {}", savedUser.getId());

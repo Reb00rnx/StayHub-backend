@@ -96,7 +96,7 @@ class UserServiceTest {
     @Test
     void createUser_shouldCreateUser_whenEmailIsUnique() {
         // given
-        CreateUserRequest request = new CreateUserRequest("new@example.com", "rawPassword", "Jane", "Doe");
+        CreateUserRequest request = new CreateUserRequest("new@example.com", "rawPassword", "Jane", "Doe", null);
         when(userRepository.existsByEmail(request.email())).thenReturn(false);
         when(passwordEncoder.encode(request.password())).thenReturn("encodedPassword");
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
@@ -118,7 +118,7 @@ class UserServiceTest {
     @Test
     void createUser_shouldThrowValidationException_whenEmailAlreadyExists() {
         // given
-        CreateUserRequest request = new CreateUserRequest("existing@example.com", "rawPassword", "Jane", "Doe");
+        CreateUserRequest request = new CreateUserRequest("existing@example.com", "rawPassword", "Jane", "Doe", null);
         when(userRepository.existsByEmail(request.email())).thenReturn(true);
 
         // when / then
