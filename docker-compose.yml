@@ -37,6 +37,7 @@ services:
     networks:
       - stayhub-network
 
+
 volumes:
   postgres_data:
     name: stayhub_postgres_data
