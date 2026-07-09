@@ -34,4 +34,12 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
             @Param("roomId") UUID roomId,
             @Param("checkIn") LocalDate checkIn,
             @Param("checkOut") LocalDate checkOut);
+
+    @Query("SELECT b.roomId FROM Booking b " +
+           "WHERE b.status <> 'CANCELLED' " +
+           "AND b.checkIn < :checkOut " +
+           "AND b.checkOut > :checkIn")
+    List<UUID> findOccupiedRoomIds(
+            @Param("checkIn") LocalDate checkIn,
+            @Param("checkOut") LocalDate checkOut);
 }
