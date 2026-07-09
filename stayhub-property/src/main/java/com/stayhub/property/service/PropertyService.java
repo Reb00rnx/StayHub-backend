@@ -8,6 +8,8 @@ import com.stayhub.property.entity.Property;
 import com.stayhub.property.repository.PropertyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,7 @@ public class PropertyService {
 
     private final PropertyRepository propertyRepository;
 
+    @Cacheable(value = "properties", key = "#id")
     @Transactional(readOnly = true, timeout = 10)
     public PropertyResponse findById(UUID id) {
         return mapToResponse(findPropertyEntity(id));
@@ -48,6 +51,7 @@ public class PropertyService {
         return mapToResponse(savedProperty);
     }
 
+    @CacheEvict(value = "properties", key = "#id")
     @Transactional(timeout = 10)
     public PropertyResponse update(UUID id, UpdatePropertyRequest updates) {
         Property property = findPropertyEntity(id);
@@ -79,6 +83,7 @@ public class PropertyService {
         return mapToResponse(savedProperty);
     }
 
+    @CacheEvict(value = "properties", key = "#id")
     @Transactional(timeout = 10)
     public void delete(UUID id) {
         Property property = findPropertyEntity(id);

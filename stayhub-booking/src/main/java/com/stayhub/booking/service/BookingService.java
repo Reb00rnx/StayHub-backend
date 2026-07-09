@@ -13,7 +13,8 @@ import com.stayhub.common.exception.ValidationException;
 import com.stayhub.property.entity.Room;
 import com.stayhub.property.entity.RoomStatus;
 import com.stayhub.property.repository.RoomRepository;
-import lombok.RequiredArgsConstructor;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,13 +27,27 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class BookingService {
 
     private final BookingEventProducer bookingEventProducer;
     private final BookingRepository bookingRepository;
     private final RoomRepository roomRepository;
+    private final Counter bookingsCreated;
+    private final Counter bookingsConfirmed;
+    private final Counter bookingsCancelled;
+
+    public BookingService(BookingEventProducer bookingEventProducer,
+                          BookingRepository bookingRepository,
+                          RoomRepository roomRepository,
+                          MeterRegistry meterRegistry) {
+        this.bookingEventProducer = bookingEventProducer;
+        this.bookingRepository = bookingRepository;
+        this.roomRepository = roomRepository;
+        this.bookingsCreated = meterRegistry.counter("bookings.created");
+        this.bookingsConfirmed = meterRegistry.counter("bookings.confirmed");
+        this.bookingsCancelled = meterRegistry.counter("bookings.cancelled");
+    }
 
     @Transactional(timeout = 10)
     public BookingResponse createBooking(CreateBookingRequest request) {
@@ -61,6 +76,7 @@ public class BookingService {
         savedBooking.getStatusHistory().add(history);
         bookingRepository.save(savedBooking);
         log.info("Booking {} created with status PENDING", savedBooking.getId());
+        bookingsCreated.increment();
 
 
         bookingEventProducer.publish(new BookingEvent(
@@ -88,6 +104,7 @@ public class BookingService {
 
         Booking savedBooking = bookingRepository.save(booking);
         log.info("Booking {} confirmed", savedBooking.getId());
+        bookingsConfirmed.increment();
 
         bookingEventProducer.publish(new BookingEvent(
         savedBooking.getId(), savedBooking.getGuestId(), savedBooking.getRoomId(),
@@ -120,6 +137,7 @@ public class BookingService {
 
         Booking savedBooking = bookingRepository.save(booking);
         log.info("Booking {} cancelled, room {} set back to AVAILABLE", savedBooking.getId(), room.getId());
+        bookingsCancelled.increment();
 
         bookingEventProducer.publish(new BookingEvent(
         savedBooking.getId(), savedBooking.getGuestId(), savedBooking.getRoomId(),

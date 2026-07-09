@@ -43,6 +43,16 @@ services:
     networks:
       - stayhub-network
 
+  redis:
+    image: redis:7-alpine
+    container_name: stayhub-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - stayhub-network
+
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: stayhub-pgadmin
@@ -67,6 +77,8 @@ volumes:
     name: stayhub_pgadmin_data
   kafka_data:
     name: stayhub_kafka_data
+  redis_data:
+    name: stayhub_redis_data
 
 networks:
   stayhub-network:

@@ -14,9 +14,11 @@ import com.stayhub.property.entity.Room;
 import com.stayhub.property.entity.RoomStatus;
 import com.stayhub.property.entity.RoomType;
 import com.stayhub.property.repository.RoomRepository;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -44,8 +46,13 @@ class BookingServiceTest {
     @Mock
     private BookingEventProducer bookingEventProducer;
 
-    @InjectMocks
     private BookingService bookingService;
+
+    @BeforeEach
+    void setUp() {
+        MeterRegistry meterRegistry = new SimpleMeterRegistry();
+        bookingService = new BookingService(bookingEventProducer, bookingRepository, roomRepository, meterRegistry);
+    }
 
     @Test
     void createBooking_shouldCreateBooking_whenNoOverlapExists() {
