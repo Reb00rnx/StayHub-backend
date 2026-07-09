@@ -241,7 +241,7 @@ class BookingServiceTest {
 
         // then
         assertThat(response).hasSize(1);
-        assertThat(response.get(0).guestId()).isEqualTo(guestId);
+        assertThat(response.getFirst().guestId()).isEqualTo(guestId);
     }
 
     private Room createTestRoom(UUID roomId) {

@@ -14,6 +14,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.mockito.ArgumentMatchers;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -22,7 +23,6 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -45,7 +45,7 @@ class PropertySearchServiceTest {
         Page<Property> page = new PageImpl<>(List.of(property));
         PropertySearchCriteria criteria = new PropertySearchCriteria(null, null, null, null, null, null, null);
 
-        when(propertyRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(page);
+        when(propertyRepository.findAll(ArgumentMatchers.<Specification<Property>>any(), eq(pageable))).thenReturn(page);
 
         // when
         Page<PropertyResponse> result = propertySearchService.search(criteria, pageable);
@@ -66,14 +66,14 @@ class PropertySearchServiceTest {
 
         UUID occupiedRoomId = UUID.randomUUID();
         when(bookingRepository.findOccupiedRoomIds(checkIn, checkOut)).thenReturn(List.of(occupiedRoomId));
-        when(propertyRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(Page.empty());
+        when(propertyRepository.findAll(ArgumentMatchers.<Specification<Property>>any(), eq(pageable))).thenReturn(Page.empty());
 
         // when
         propertySearchService.search(criteria, pageable);
 
         // then
         verify(bookingRepository).findOccupiedRoomIds(checkIn, checkOut);
-        verify(propertyRepository).findAll(any(Specification.class), eq(pageable));
+        verify(propertyRepository).findAll(ArgumentMatchers.<Specification<Property>>any(), eq(pageable));
     }
 
     @Test
@@ -83,7 +83,7 @@ class PropertySearchServiceTest {
         PropertySearchCriteria criteria = new PropertySearchCriteria(
                 null, null, null, null, null, LocalDate.of(2026, 8, 1), null);
 
-        when(propertyRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(Page.empty());
+        when(propertyRepository.findAll(ArgumentMatchers.<Specification<Property>>any(), eq(pageable))).thenReturn(Page.empty());
 
         // when
         propertySearchService.search(criteria, pageable);
