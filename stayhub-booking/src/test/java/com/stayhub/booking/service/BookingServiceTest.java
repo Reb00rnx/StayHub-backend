@@ -4,7 +4,9 @@ import com.stayhub.booking.dto.BookingResponse;
 import com.stayhub.booking.dto.CreateBookingRequest;
 import com.stayhub.booking.entity.Booking;
 import com.stayhub.booking.entity.BookingStatus;
+import com.stayhub.booking.kafka.BookingEventProducer;
 import com.stayhub.booking.repository.BookingRepository;
+import com.stayhub.common.event.BookingEvent;
 import com.stayhub.common.exception.BookingConflictException;
 import com.stayhub.common.exception.ResourceNotFoundException;
 import com.stayhub.common.exception.ValidationException;
@@ -39,6 +41,9 @@ class BookingServiceTest {
     @Mock
     private RoomRepository roomRepository;
 
+    @Mock
+    private BookingEventProducer bookingEventProducer;
+
     @InjectMocks
     private BookingService bookingService;
 
@@ -65,8 +70,9 @@ class BookingServiceTest {
 
         // then
         assertThat(response.status()).isEqualTo(BookingStatus.PENDING);
-        assertThat(response.totalPrice()).isEqualByComparingTo(BigDecimal.valueOf(450)); // 3 nights * 150
+        assertThat(response.totalPrice()).isEqualByComparingTo(BigDecimal.valueOf(450));
         verify(bookingRepository, times(2)).save(any(Booking.class));
+        verify(bookingEventProducer).publish(any(BookingEvent.class));
     }
 
     @Test
@@ -124,6 +130,8 @@ class BookingServiceTest {
 
         // then
         assertThat(response.status()).isEqualTo(BookingStatus.CONFIRMED);
+        verify(bookingEventProducer).publish(any(BookingEvent.class));
+
     }
 
     @Test
@@ -166,6 +174,8 @@ class BookingServiceTest {
         assertThat(response.status()).isEqualTo(BookingStatus.CANCELLED);
         assertThat(room.getStatus()).isEqualTo(RoomStatus.AVAILABLE);
         verify(roomRepository).save(room);
+        verify(bookingEventProducer).publish(any(BookingEvent.class));
+
     }
 
     @Test

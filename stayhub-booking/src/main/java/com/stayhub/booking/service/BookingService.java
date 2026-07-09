@@ -5,6 +5,7 @@ import com.stayhub.booking.dto.CreateBookingRequest;
 import com.stayhub.booking.entity.Booking;
 import com.stayhub.booking.entity.BookingStatus;
 import com.stayhub.booking.entity.BookingStatusHistory;
+import com.stayhub.booking.kafka.BookingEventProducer;
 import com.stayhub.booking.repository.BookingRepository;
 import com.stayhub.common.exception.BookingConflictException;
 import com.stayhub.common.exception.ResourceNotFoundException;
@@ -16,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.stayhub.common.event.BookingEvent;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -28,6 +30,7 @@ import java.util.UUID;
 @Slf4j
 public class BookingService {
 
+    private final BookingEventProducer bookingEventProducer;
     private final BookingRepository bookingRepository;
     private final RoomRepository roomRepository;
 
@@ -59,6 +62,11 @@ public class BookingService {
         bookingRepository.save(savedBooking);
         log.info("Booking {} created with status PENDING", savedBooking.getId());
 
+
+        bookingEventProducer.publish(new BookingEvent(
+        savedBooking.getId(), savedBooking.getGuestId(), savedBooking.getRoomId(),
+        "PENDING", savedBooking.getCheckIn(), savedBooking.getCheckOut(),
+        savedBooking.getTotalPrice(), Instant.now()));
         return  mapToResponse(savedBooking);
 
     }
@@ -80,6 +88,12 @@ public class BookingService {
 
         Booking savedBooking = bookingRepository.save(booking);
         log.info("Booking {} confirmed", savedBooking.getId());
+
+        bookingEventProducer.publish(new BookingEvent(
+        savedBooking.getId(), savedBooking.getGuestId(), savedBooking.getRoomId(),
+        "CONFIRMED", savedBooking.getCheckIn(), savedBooking.getCheckOut(),
+        savedBooking.getTotalPrice(), Instant.now()));
+
         return mapToResponse(savedBooking);
 }
 
@@ -106,6 +120,12 @@ public class BookingService {
 
         Booking savedBooking = bookingRepository.save(booking);
         log.info("Booking {} cancelled, room {} set back to AVAILABLE", savedBooking.getId(), room.getId());
+
+        bookingEventProducer.publish(new BookingEvent(
+        savedBooking.getId(), savedBooking.getGuestId(), savedBooking.getRoomId(),
+        "CANCELLED", savedBooking.getCheckIn(), savedBooking.getCheckOut(),
+        savedBooking.getTotalPrice(), Instant.now()));
+
         return mapToResponse(savedBooking);
     }
 
