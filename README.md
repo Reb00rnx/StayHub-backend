@@ -1,8 +1,6 @@
 # StayHub — Hotel Reservation System
 
-A multi-module Spring Boot hotel reservation system built progressively across 4 stages.
-Stage 1 covers core domain CRUD and transactional booking logic.
-Stages 2–4 add async messaging, caching, and observability.
+A multi-module Spring Boot hotel reservation system. Covers full booking lifecycle with pessimistic-lock concurrency, JWT authentication, dynamic property search via Specification API, async Kafka events with a notification consumer, Redis caching, and Micrometer business metrics.
 
 ---
 
@@ -15,12 +13,13 @@ Stages 2–4 add async messaging, caching, and observability.
 | Persistence    | Spring Data JPA / Hibernate 6       |
 | Database       | PostgreSQL 15                       |
 | Migrations     | Liquibase                           |
-| Security       | Spring Security (JWT — Stage 2)     |
-| Messaging      | Kafka (Stage 2)                     |
-| Caching        | Redis (Stage 4)                     |
+| Security       | Spring Security + JWT               |
+| Messaging      | Apache Kafka                        |
+| Caching        | Redis 7                             |
+| Metrics        | Micrometer                          |
 | Build          | Maven (multi-module)                |
 | Infrastructure | Docker Compose                      |
-| Testing        | JUnit 5, Mockito, AssertJ            |
+| Testing        | JUnit 5, Mockito, AssertJ           |
 
 ---
 
@@ -29,11 +28,11 @@ Stages 2–4 add async messaging, caching, and observability.
 ```
 stayhub-parent
 ├── stayhub-common          ← BaseEntity, DTOs, exceptions, GlobalExceptionHandler
-├── stayhub-user            ← User entity, UserService, SecurityConfig
-├── stayhub-property        ← Property + Room entities, CRUD services
-├── stayhub-booking         ← Booking entity, concurrency-safe BookingService
-├── stayhub-notification    ← Placeholder (Stage 2: Kafka consumers)
-└── stayhub-api             ← Spring Boot entry point, application.yml, Liquibase
+├── stayhub-user            ← User entity, UserService, JWT SecurityConfig
+├── stayhub-property        ← Property + Room entities, CRUD, Specification search
+├── stayhub-booking         ← Booking lifecycle, pessimistic-lock concurrency, Micrometer counters
+├── stayhub-notification    ← Kafka consumer for booking events
+└── stayhub-api             ← Spring Boot entry point, CacheConfig, PropertySearchService, application.yml
 ```
 
 Each business module is a plain Maven module with Spring beans — no `main` class.
@@ -44,22 +43,22 @@ Each business module is a plain Maven module with Spring beans — no `main` cla
 ## Modules
 
 ### stayhub-common
-Shared infrastructure: `BaseEntity` (UUID PK, audit timestamps), `ApiResponse<T>` / `ErrorResponse` / `PageResponse<T>` records, domain exceptions, and `GlobalExceptionHandler`.
+Shared infrastructure: `BaseEntity` (UUID PK, audit timestamps), `ApiResponse<T>` / `ErrorResponse` / `PageResponse<T>` records, domain exceptions (`ResourceNotFoundException`, `BookingConflictException`, `ValidationException`), and `GlobalExceptionHandler`.
 
 ### stayhub-user
-`User` entity with `UserRole` (GUEST, HOST, ADMIN). `SecurityConfig` permits all requests in Stage 1 — JWT filter added in Stage 2.
+`User` entity with `UserRole` (GUEST, HOST, ADMIN). `SecurityConfig` with JWT filter — all booking and property endpoints require a valid Bearer token.
 
 ### stayhub-property
-`Property` and `Room` entities. `RoomStatus` (AVAILABLE, OCCUPIED, MAINTENANCE). Room is a sub-resource of Property.
+`Property` and `Room` entities. `RoomStatus` (AVAILABLE, OCCUPIED, MAINTENANCE). `PropertySpecification` builds dynamic JPA `Specification` predicates for search by city, country, price range, and room type. `PropertyService.findById` is Redis-cached.
 
 ### stayhub-booking
-`Booking` entity with `BookingStatusHistory` audit trail. `BookingService.createBooking` uses `@Lock(PESSIMISTIC_WRITE)` inside `@Transactional` to prevent double-booking.
+`Booking` entity with `BookingStatusHistory` audit trail. `BookingService.createBooking` uses `@Lock(PESSIMISTIC_WRITE)` inside `@Transactional` to prevent double-booking. Micrometer counters track created, confirmed, and cancelled bookings.
 
 ### stayhub-notification
-Empty placeholder. Stage 2 will add Kafka consumers that send email/push notifications on booking events.
+Kafka consumer (`@KafkaListener`) that handles `BookingEvent` messages published on every booking state change (PENDING / CONFIRMED / CANCELLED) and logs outbound notification intent.
 
 ### stayhub-api
-`StayHubApplication` entry point. Owns `application.yml` (datasource, Liquibase, virtual threads) and all Liquibase SQL migrations.
+`StayHubApplication` entry point. Owns `application.yml`, `CacheConfig` (Redis TTL, JSON serializer), `PropertySearchService` (orchestrates Specification + date availability across modules), and all Liquibase SQL migrations.
 
 ---
 
@@ -70,22 +69,25 @@ Empty placeholder. Stage 2 will add Kafka consumers that send email/push notific
 - Maven 3.9+
 - Docker + Docker Compose
 
-### Start the database
+### Start infrastructure
 
 ```bash
 docker-compose up -d
 ```
 
-- PostgreSQL available at `localhost:5432`
-- pgAdmin UI at `http://localhost:5050` (admin@stayhub.com / admin_password)
+Services started:
+- PostgreSQL at `localhost:5432`
+- Redis at `localhost:6379`
+- Kafka + Zookeeper at `localhost:9092`
+- pgAdmin UI at `http://localhost:5050` (credentials in `docker-compose.yml`)
 
 Connect pgAdmin to the `stayhub-postgres` container:
-- Host: `stayhub-postgres`, Port: `5432`, DB: `stayhub`, User: `stayhub`
+- Host: `stayhub-postgres`, Port: `5432`, DB: `stayhub`
 
 ### Build all modules
 
 ```bash
-./mvnw clean compile
+./mvnw clean install -DskipTests
 ```
 
 ### Run the application
@@ -109,8 +111,6 @@ GET http://localhost:8080/actuator/health
 http://localhost:8080/swagger-ui.html
 ```
 
-Interactive view of every endpoint across all modules — request/response schemas, try-it-out execution.
-
 ---
 
 ## API Endpoints
@@ -119,48 +119,39 @@ Interactive view of every endpoint across all modules — request/response schem
 
 ### Users — `/api/v1/users`
 
-| Method | Path              | Description         | Status |
-|--------|-------------------|----------------------|--------|
-| POST   | `/`               | Register a new user | Done   |
-| GET    | `/{id}`           | Get user by ID      | Done   |
-| PUT    | `/{id}`           | Update user profile | Done   |
+| Method | Path    | Description         |
+|--------|---------|----------------------|
+| POST   | `/`     | Register a new user |
+| GET    | `/{id}` | Get user by ID      |
+| PUT    | `/{id}` | Update user profile |
 
 ### Properties — `/api/v1/properties`
 
-| Method | Path              | Description           | Status |
-|--------|-------------------|------------------------|--------|
-| GET    | `/`               | List all (paginated)  | Done   |
-| GET    | `/{id}`           | Get property by ID    | Done   |
-| POST   | `/`               | Create property        | Done   |
-| PUT    | `/{id}`           | Update property        | Done   |
-| DELETE | `/{id}`           | Delete property        | Done   |
+| Method | Path              | Description                                            |
+|--------|-------------------|--------------------------------------------------------|
+| GET    | `/`               | List all (paginated)                                   |
+| GET    | `/{id}`           | Get property by ID (Redis-cached, TTL 10 min)          |
+| GET    | `/search`         | Search with filters: city, country, minPrice, maxPrice, roomType, checkIn, checkOut |
+| POST   | `/`               | Create property                                        |
+| PUT    | `/{id}`           | Update property (evicts cache)                         |
+| DELETE | `/{id}`           | Delete property (evicts cache)                         |
 
 ### Rooms — `/api/v1/properties/{propertyId}/rooms`
 
-| Method | Path                             | Description              | Status |
-|--------|----------------------------------|---------------------------|--------|
-| GET    | `/`                              | List rooms for property  | Done   |
-| GET    | `/available?checkIn=&checkOut=`  | Find available rooms      | Done   |
-| POST   | `/`                              | Add room to property      | Done   |
-| PATCH  | `/{roomId}/status`               | Update room status        | Done   |
+| Method | Path                            | Description              |
+|--------|---------------------------------|--------------------------|
+| GET    | `/`                             | List rooms for property  |
+| GET    | `/available?checkIn=&checkOut=` | Find available rooms      |
+| POST   | `/`                             | Add room to property      |
+| PATCH  | `/{roomId}/status`              | Update room status        |
 
 ### Bookings — `/api/v1/bookings`
 
-| Method | Path                  | Description                | Status |
-|--------|-----------------------|------------------------------|--------|
-| POST   | `/`                   | Create booking              | Done   |
-| GET    | `/{id}`               | Get booking by ID            | Done   |
-| GET    | `/guest/{guestId}`    | List bookings for guest      | Done   |
-| PUT    | `/{id}/confirm`       | Confirm a pending booking    | Done   |
-| PUT    | `/{id}/cancel`        | Cancel a booking             | Done   |
+| Method | Path               | Description                  |
+|--------|--------------------|------------------------------|
+| POST   | `/`                | Create booking               |
+| GET    | `/{id}`            | Get booking by ID            |
+| GET    | `/guest/{guestId}` | List bookings for guest      |
+| PUT    | `/{id}/confirm`    | Confirm a pending booking    |
+| PUT    | `/{id}/cancel`     | Cancel a booking             |
 
----
-
-## Stage Roadmap
-
-| Stage | Focus                        | Key additions                                                                  |
-|-------|------------------------------|--------------------------------------------------------------------------------|
-| **1** | Core domain *(complete)*     | Multi-module Maven, PostgreSQL, Liquibase, CRUD, pessimistic-lock booking      |
-| **2** | Async & security             | JWT authentication, Kafka events, email notifications via stayhub-notification |
-| **3** | Advanced queries & reporting | Specification/criteria queries, booking analytics, availability calendar       |
-| **4** | Performance & observability  | Redis caching (room availability), Micrometer metrics, distributed tracing     |
